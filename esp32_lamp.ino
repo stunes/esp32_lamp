@@ -40,7 +40,7 @@ const int LED_PIN = 22;
 const unsigned int BOUNCE_DELAY_MS = 500; // ms
 
 unsigned long lastInterrupt;  // last interrupt time
-int shouldTrigger = 0;
+volatile int shouldTrigger = 0;
 
 // connectToWiFi adapted from ESP32 example code. See, e.g.:
 // https://github.com/espressif/arduino-esp32/blob/master/libraries/WiFi/examples/WiFiClient/WiFiClient.ino
