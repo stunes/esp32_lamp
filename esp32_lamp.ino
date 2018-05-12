@@ -65,6 +65,30 @@ void connectToWiFi() {
   Serial.println(WiFi.localIP());
 }
 
+void wiFiEvent(WiFiEvent_t event) {
+  Serial.printf("WiFi event: %d\n", event);
+  switch (event) {
+  case SYSTEM_EVENT_STA_DISCONNECTED:
+    Serial.println("WiFi disconnected");
+    blinkForever();
+    break;
+  }
+}
+
+[[noreturn]] void blinkForever() {
+  while (true) {
+    digitalWrite(LED_PIN, LOW);
+    delay(100);
+    digitalWrite(LED_PIN, HIGH);
+    delay(100);
+
+    digitalWrite(LED_PIN, LOW);
+    delay(100);
+    digitalWrite(LED_PIN, HIGH);
+    delay(700);
+  }
+}
+
 void putJson(const char *url, String content) {
   Serial.println("putJson");
   Serial.printf("PUT %s: %s\n", url, content.c_str());
@@ -142,6 +166,7 @@ void setup() {
   pinMode(LED_PIN, OUTPUT);
   pinMode(INPUT_PIN, INPUT_PULLUP);
 
+  WiFi.onEvent(wiFiEvent);
   connectToWiFi();
 
   attachInterrupt(digitalPinToInterrupt(INPUT_PIN), handleButton, FALLING);
