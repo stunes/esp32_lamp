@@ -42,6 +42,12 @@ const unsigned int BOUNCE_DELAY_MS = 500; // ms
 unsigned long lastInterrupt;  // last interrupt time
 volatile int shouldTrigger = 0;
 
+// If watchForDisconnect is true, try to reconnect if
+// there's a Wi-Fi disconnection event. This is to
+// disable trying to reconnect if (re)connection is already
+// in progress.
+volatile int watchForDisconnect = 0;
+
 // connectToWiFi adapted from ESP32 example code. See, e.g.:
 // https://github.com/espressif/arduino-esp32/blob/master/libraries/WiFi/examples/WiFiClient/WiFiClient.ino
 void connectToWiFi() {
@@ -63,29 +69,21 @@ void connectToWiFi() {
   Serial.println("Connected.");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
+
+  Serial.println("Watching for Wi-Fi disconnect");
+  watchForDisconnect = 1;
 }
 
 void wiFiEvent(WiFiEvent_t event) {
   Serial.printf("WiFi event: %d\n", event);
   switch (event) {
   case SYSTEM_EVENT_STA_DISCONNECTED:
-    Serial.println("WiFi disconnected");
-    blinkForever();
-    break;
-  }
-}
-
-[[noreturn]] void blinkForever() {
-  while (true) {
-    digitalWrite(LED_PIN, LOW);
-    delay(100);
-    digitalWrite(LED_PIN, HIGH);
-    delay(100);
-
-    digitalWrite(LED_PIN, LOW);
-    delay(100);
-    digitalWrite(LED_PIN, HIGH);
-    delay(700);
+    if (watchForDisconnect) {
+      Serial.println("WiFi disconnected");
+      watchForDisconnect = 0;
+      connectToWiFi();
+      break;
+    }
   }
 }
 
