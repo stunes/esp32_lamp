@@ -42,49 +42,40 @@ const unsigned int BOUNCE_DELAY_MS = 500; // ms
 unsigned long lastInterrupt;  // last interrupt time
 volatile int shouldTrigger = 0;
 
-// If watchForDisconnect is true, try to reconnect if
-// there's a Wi-Fi disconnection event. This is to
-// disable trying to reconnect if (re)connection is already
-// in progress.
-volatile int watchForDisconnect = 0;
+const unsigned int CONNECT_TIMEOUT_MS = 30000;  // WiFi connnection timeout (ms)
+const unsigned int WIFI_CHECK_MS = 30000;       // WiFi status check interval (ms)
+unsigned long nextWifiCheck;  // next time to check WiFi status
 
 // connectToWiFi adapted from ESP32 example code. See, e.g.:
 // https://github.com/espressif/arduino-esp32/blob/master/libraries/WiFi/examples/WiFiClient/WiFiClient.ino
 void connectToWiFi() {
+  unsigned long startTime = millis();
   Serial.println("Connecting to: " + String(SSID));
-  int ledState = 0;
 
+  WiFi.disconnect();
   WiFi.begin(SSID, PWD);
 
   while (WiFi.status() != WL_CONNECTED) {
-    digitalWrite(LED_PIN, ledState);
-    ledState = (ledState + 1) % 2;
     delay(500);
     Serial.print(".");
-  }
 
-  digitalWrite(LED_PIN, HIGH);
+    if (millis() - startTime > CONNECT_TIMEOUT_MS) {
+      Serial.println();
+      Serial.println("Failed to connect.");
+      return;
+    }
+  }
 
   Serial.println();
   Serial.println("Connected.");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
-  Serial.println("Watching for Wi-Fi disconnect");
-  watchForDisconnect = 1;
-}
+  digitalWrite(LED_PIN, LOW);
+  delay(100);
+  digitalWrite(LED_PIN, HIGH);
 
-void wiFiEvent(WiFiEvent_t event) {
-  Serial.printf("WiFi event: %d\n", event);
-  switch (event) {
-  case SYSTEM_EVENT_STA_DISCONNECTED:
-    if (watchForDisconnect) {
-      Serial.println("WiFi disconnected");
-      watchForDisconnect = 0;
-      connectToWiFi();
-      break;
-    }
-  }
+  nextWifiCheck = millis() + WIFI_CHECK_MS;
 }
 
 void putJson(const char *url, String content) {
@@ -164,7 +155,6 @@ void setup() {
   pinMode(LED_PIN, OUTPUT);
   pinMode(INPUT_PIN, INPUT_PULLUP);
 
-  WiFi.onEvent(wiFiEvent);
   connectToWiFi();
 
   attachInterrupt(digitalPinToInterrupt(INPUT_PIN), handleButton, FALLING);
@@ -175,5 +165,20 @@ void loop() {
   if (shouldTrigger) {
     toggleLights();
     shouldTrigger = 0;
+  }
+
+  // Check WiFi status and reconnect if necessary
+  // https://www.reddit.com/r/esp32/comments/7trl0f/reconnect_to_wifi/dtfbfct/
+  unsigned long currentTime = millis();
+  if (currentTime > nextWifiCheck) {
+    Serial.println("Checking WiFi status");
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("WiFi disconnected; will try reconnecting");
+      connectToWiFi();
+      // connectToWiFi will reset nextWifiCheck for us in this case
+    } else {
+      Serial.println("WiFi connected; will do nothing");
+      nextWifiCheck = currentTime + WIFI_CHECK_MS;
+    }
   }
 }
