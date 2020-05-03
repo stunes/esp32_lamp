@@ -124,9 +124,9 @@ bool lightsOn() {
   Serial.println("lightsOn");
   String jsonBody = getUrl(GROUP_URL);
 
-  StaticJsonBuffer<4096> jsonBuffer;
-  JsonObject &root = jsonBuffer.parseObject(jsonBody);
-  bool isOn = root["state"]["any_on"];
+  StaticJsonDocument<4096> jsonDoc;
+  deserializeJson(jsonDoc, jsonBody);
+  bool isOn = jsonDoc["state"]["any_on"];
   Serial.printf("isOn: %d\n", isOn);
   return isOn;
 }
