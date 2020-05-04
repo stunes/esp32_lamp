@@ -1,4 +1,4 @@
-// Copyright 2017 Mike Stunes.
+// Copyright 2017,2020 Mike Stunes.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -43,8 +43,6 @@ unsigned long lastInterrupt;  // last interrupt time
 volatile int shouldTrigger = 0;
 
 const unsigned int CONNECT_TIMEOUT_MS = 30000;  // WiFi connnection timeout (ms)
-const unsigned int WIFI_CHECK_MS = 30000;       // WiFi status check interval (ms)
-unsigned long nextWifiCheck;  // next time to check WiFi status
 
 // connectToWiFi adapted from ESP32 example code. See, e.g.:
 // https://github.com/espressif/arduino-esp32/blob/master/libraries/WiFi/examples/WiFiClient/WiFiClient.ino
@@ -66,6 +64,8 @@ void connectToWiFi() {
     }
   }
 
+  WiFi.setAutoReconnect(true);
+
   Serial.println();
   Serial.println("Connected.");
   Serial.print("IP address: ");
@@ -74,8 +74,6 @@ void connectToWiFi() {
   digitalWrite(LED_PIN, LOW);
   delay(100);
   digitalWrite(LED_PIN, HIGH);
-
-  nextWifiCheck = millis() + WIFI_CHECK_MS;
 }
 
 void putJson(const char *url, String content) {
@@ -165,20 +163,5 @@ void loop() {
   if (shouldTrigger) {
     toggleLights();
     shouldTrigger = 0;
-  }
-
-  // Check WiFi status and reconnect if necessary
-  // https://www.reddit.com/r/esp32/comments/7trl0f/reconnect_to_wifi/dtfbfct/
-  unsigned long currentTime = millis();
-  if (currentTime > nextWifiCheck) {
-    Serial.println("Checking WiFi status");
-    if (WiFi.status() != WL_CONNECTED) {
-      Serial.println("WiFi disconnected; will try reconnecting");
-      connectToWiFi();
-      // connectToWiFi will reset nextWifiCheck for us in this case
-    } else {
-      Serial.println("WiFi connected; will do nothing");
-      nextWifiCheck = currentTime + WIFI_CHECK_MS;
-    }
   }
 }
